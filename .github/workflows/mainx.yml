@@ -24,7 +24,7 @@ jobs:
         run: flutter build apk --release
       
       - name: Upload APK
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: SafeLive-APK
           path: build/app/outputs/flutter-apk/app-release.apk
@@ -55,7 +55,7 @@ jobs:
           zip -r Runner.ipa Payload/
       
       - name: Upload IPA
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: SafeLive-IPA
           path: build/ios/iphoneos/Runner.ipa
