@@ -1,0 +1,62 @@
+name: safe_live_stream_app
+description: SafeStream AI - Global Live Moderation with ML Vision for 2026.
+
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Firebase
+  firebase_core: ^2.24.0
+  firebase_auth: ^4.14.0
+  cloud_firestore: ^4.14.0
+
+  # ML Kit for Vision & Object Detection
+  google_mlkit_object_detection: ^0.12.0
+  google_mlkit_commons: ^0.12.0
+
+  # Camera & Media
+  camera: ^0.10.5
+  image_picker: ^1.0.4
+
+  # Networking
+  http: ^1.1.0
+  dio: ^5.3.0
+
+  # UI & Material
+  flutter_material_color_picker: ^1.2.7
+  intl: ^0.19.0
+
+  # Encryption
+  crypto: ^3.0.3
+  encrypt: ^4.0.3
+
+  # Other
+  cupertino_icons: ^1.0.2
+  uuid: ^4.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/global_moderation_config.json
+    - assets/vision_trigger_list.json
+
+  fonts:
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/Roboto-Regular.ttf
+        - asset: assets/fonts/Roboto-Bold.ttf
+          weight: 700
