@@ -1,0 +1,61 @@
+name: Build APK & IPA
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.0'
+          channel: 'stable'
+      
+      - name: Get dependencies
+        run: flutter pub get
+      
+      - name: Build APK
+        run: flutter build apk --release
+      
+      - name: Upload APK
+        uses: actions/upload-artifact@v3
+        with:
+          name: SafeLive-APK
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+  build-ipa:
+    runs-on: macos-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.0'
+          channel: 'stable'
+      
+      - name: Get dependencies
+        run: flutter pub get
+      
+      - name: Build iOS
+        run: flutter build ios --release --no-codesign
+      
+      - name: Create IPA
+        run: |
+          cd build/ios/iphoneos
+          mkdir -p Payload
+          mv Runner.app Payload/Runner.app
+          zip -r Runner.ipa Payload/
+      
+      - name: Upload IPA
+        uses: actions/upload-artifact@v3
+        with:
+          name: SafeLive-IPA
+          path: build/ios/iphoneos/Runner.ipa
