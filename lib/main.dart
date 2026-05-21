@@ -2,6 +2,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:http/http.dart' as http;
+import 'services/global_moderator.dart';
+import 'services/iap_service.dart';
 
 void main() => runApp(SafeStreamApp());
 
@@ -132,57 +135,113 @@ class _DashboardState extends State<Dashboard> {
   ModerationLogger complianceLogger = ModerationLogger();
   bool isLoading = true;
   String currentUserId = "user_${DateTime.now().millisecondsSinceEpoch}";
+  
+  // Connect your uploaded tracking services
+  late GlobalLanguageShield globalShield;
+  late SubscriptionManager subscriptionManager;
+  
+  // Replace with your running Flask backend IP (rest_api.py)
+  final String backendUrl = "http://YOUR_BACKEND_SERVER_IP:5000/api/moderate";
 
   @override
   void initState() {
     super.initState();
-    _loadConfig();
+    _initializeModules();
   }
 
-  // Load the Global JSON file from assets
-  Future<void> _loadConfig() async {
+  Future<void> _initializeModules() async {
+    // 1. Load the core dictionary configuration asset
     final String response = await rootBundle.loadString('assets/global_moderation_config.json');
+    config = json.decode(response);
+
+    // 2. Feed the configuration down to your Global Language Shield
+    globalShield = GlobalLanguageShield(textBlacklist: config);
+
+    // 3. Start your In-App Purchases tracking system
+    subscriptionManager = SubscriptionManager();
+    await subscriptionManager.initPurchase();
+
     setState(() {
-      config = json.decode(response);
       isLoading = false;
     });
   }
 
-  void _processMessage(String input) {
-    if (config == null || input.isEmpty) return;
-    
-    bool isBlocked = false;
-    String reason = "None";
-    String cleanMsg = input.toLowerCase();
-    String violationType = "NONE";
+  Future<void> _processMessage(String input) async {
+    if (input.isEmpty) return;
 
-    // Scan all languages in the JSON
-    Map<String, dynamic> blacklists = config!['blacklists'];
-    for (var lang in blacklists.keys) {
-      for (var word in blacklists[lang]) {
-        if (cleanMsg.contains(word.toLowerCase())) {
-          isBlocked = true;
-          reason = lang.toUpperCase();
-          violationType = "OFFENSIVE_CONTENT_$reason";
-          break;
-        }
-      }
-      if (isBlocked) break;
+    // $1.00 USD Premium Guard validation rule
+    bool isPremium = subscriptionManager.hasActiveSubscription();
+    if (!isPremium && logs.length >= 15) {
+      _showSubscriptionPrompt();
+      return;
     }
 
-    // Log the action for compliance (encrypted)
+    String detectedLanguage = "unknown";
+    bool isBlocked = false;
+    String reason = "Clean";
+
+    try {
+      // Phase A: Use your local ML engine for language identification
+      detectedLanguage = await globalShield.getLanguage(input);
+      isBlocked = await globalShield.isToxic(input, detectedLanguage);
+      
+      if (isBlocked) {
+        reason = "Local Flagged (${detectedLanguage.toUpperCase()})";
+      } else {
+        // Phase B: Hybrid Fallback to your cloud server (rest_api.py)
+        final serverResponse = await http.post(
+          Uri.parse(backendUrl),
+          headers: {"Content-Type": "application/json"},
+          body: jsonEncode({"message": input}),
+        ).timeout(Duration(seconds: 4));
+
+        if (serverResponse.statusCode == 200) {
+          final serverData = jsonDecode(serverResponse.body);
+          if (serverData['blocked'] == true) {
+            isBlocked = true;
+            detectedLanguage = serverData['language'];
+            reason = "Cloud Core Flagged";
+          }
+        }
+      }
+    } catch (e) {
+      print("System routing error: $e");
+    }
+
+    // Save logs to your encrypted compliance layout
     if (isBlocked) {
-      complianceLogger.logAction(currentUserId, input, violationType);
+      complianceLogger.logAction(currentUserId, input, reason);
     }
 
     setState(() {
       logs.insert(0, {
         "text": input,
         "status": isBlocked ? "BLOCKED" : "ALLOWED",
-        "reason": isBlocked ? "Language: $reason" : "Clean",
+        "reason": isBlocked ? "Reason: $reason" : "Clean",
         "compliance_logged": isBlocked ? "✓" : "N/A"
       });
     });
+  }
+
+  void _showSubscriptionPrompt() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("🌟 Activate SafeStream Premium"),
+        content: Text("You have reached the free monitoring limit. Unlock cross-platform visual AI and unlimited global language text parsing filters for just \$1.00 a month."),
+        actions: [
+          TextButton(child: Text("Later"), onPressed: () => Navigator.pop(context)),
+          ElevatedButton(
+            child: Text("Subscribe Now"),
+            onPressed: () {
+              Navigator.pop(context);
+              final product = subscriptionManager.getProduct(SubscriptionManager.premiumMonthlyId);
+              if (product != null) subscriptionManager.purchaseProduct(product);
+            },
+          )
+        ],
+      ),
+    );
   }
 
   @override
@@ -322,5 +381,12 @@ class _DashboardState extends State<Dashboard> {
         ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    globalShield.dispose();
+    subscriptionManager.dispose();
+    super.dispose();
   }
 }
