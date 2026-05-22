@@ -15,7 +15,6 @@ jobs:
   uses: subosito/flutter-action@v2
   with:
     channel: 'stable'
-    # RIGHT: Leave blank for latest stable SDK or specify an actual Flutter SDK version
     flutter-version: '3.24.x' 
     architecture: x64
 
@@ -42,7 +41,6 @@ jobs:
   uses: subosito/flutter-action@v2
   with:
     channel: 'stable'
-    # RIGHT: Leave blank for latest stable SDK or specify an actual Flutter SDK version
     flutter-version: '3.24.x' 
     architecture: x64
 
