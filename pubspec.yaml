@@ -35,7 +35,7 @@ dependencies:
 
   # Encryption
   crypto: ^3.0.3
-  encrypt: ^4.0.3
+  encrypt: ^5.0.3
 
   # Other
   cupertino_icons: ^1.0.2
